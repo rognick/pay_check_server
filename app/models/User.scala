@@ -1,5 +1,7 @@
 package models
 
+import java.math.BigInteger
+import java.security.SecureRandom
 import java.util._
 
 import anorm.SqlParser._
@@ -95,6 +97,13 @@ object User {
     }
   }
 
+  def login(login: String): Option[User] = {
+    DB.withConnection {
+      implicit connection =>
+        SQL("SELECT * FROM users WHERE login_name={login}").on('login -> login).as(User.parser.singleOpt)
+    }
+  }
+
   def getUser(id: Int):User = {
     DB.withConnection {
       implicit connection =>
@@ -113,6 +122,35 @@ object User {
     DB.withConnection {
       implicit connection =>
         SQL("SELECT * FROM users WHERE id={id}").on('id -> id).as(User.parser.singleOpt)
+    }
+  }
+
+  def setToken(username: String): String = {
+    val random = new SecureRandom()
+    val key = new BigInteger(130, random).toString(32)
+    DB.withConnection {
+      implicit connection =>
+        SQL("UPDATE users SET token={token} WHERE login_name={username} ").on(
+          'token -> key,
+          'username -> username).executeUpdate
+    }
+    key
+  }
+
+  def getByToken(token:String):Option[User]={
+    DB.withConnection {
+      implicit connection =>
+        SQL("SELECT * FROM users WHERE token={token}").on(
+          'token -> token).as(User.parser.singleOpt)
+    }
+  }
+
+  def resetToken(id:Int):Unit={
+    DB.withConnection {
+      implicit connection =>
+        SQL("UPDATE users SET token=NULL WHERE id={id} ").on(
+          'id -> id
+        ).executeUpdate
     }
   }
 
